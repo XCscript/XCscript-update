@@ -1,0 +1,509 @@
+-- [[ XC SCRIPT - V4 CLEAN (FIXED MOUSE AIMBOT) ]] --
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local CoreGui = game:GetService("CoreGui")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local Workspace = game:GetService("Workspace")
+local HttpService = game:GetService("HttpService")
+
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- ================= CONFIG =================
+local XC = {
+    Aimbot = false,
+    MouseAimbot = false,
+    MouseHardLock = false,
+    StickyLock = false,
+    ESP = false,
+    BoxESP = false,
+    ShowFOV = true,
+    Speed = false,
+    WallDeleteMode = false,
+    AimHotkey = Enum.UserInputType.MouseButton2,
+    HotkeyText = "MouseButton2",
+    IsBinding = false,
+    FOVRadius = 140,
+    MouseSmoothness = 0.45,
+    Accent = Color3.fromRGB(140, 40, 255),
+}
+
+local Colors = {
+    Color3.fromRGB(140, 40, 255),   -- Purple
+    Color3.fromRGB(0, 170, 255),    -- Blue
+    Color3.fromRGB(255, 50, 80),    -- Red
+    Color3.fromRGB(0, 220, 140),    -- Green
+    Color3.fromRGB(255, 170, 0),    -- Orange
+}
+local ColorNames = {"PURPLE", "BLUE", "RED", "GREEN", "ORANGE"}
+local ColorIdx = 1
+
+-- ================= UI =================
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "XC_Clean"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = CoreGui
+
+local function corner(obj, r)
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, r or 8)
+    c.Parent = obj
+end
+
+local function stroke(obj, color, thick)
+    local s = Instance.new("UIStroke")
+    s.Color = color or Color3.fromRGB(40, 40, 50)
+    s.Thickness = thick or 1
+    s.Parent = obj
+    return s
+end
+
+-- Main Window
+local Main = Instance.new("Frame")
+Main.Size = UDim2.new(0, 480, 0, 360)
+Main.Position = UDim2.new(0.5, -240, 0.5, -180)
+Main.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+Main.BorderSizePixel = 0
+Main.Active = true
+Main.Draggable = true
+Main.Parent = ScreenGui
+corner(Main, 12)
+stroke(Main, Color3.fromRGB(40, 40, 55))
+
+-- Header
+local Header = Instance.new("Frame")
+Header.Size = UDim2.new(1, 0, 0, 48)
+Header.BackgroundColor3 = Color3.fromRGB(22, 22, 28)
+Header.BorderSizePixel = 0
+Header.Parent = Main
+corner(Header, 12)
+
+local Title = Instance.new("TextLabel")
+Title.Size = UDim2.new(1, -50, 1, 0)
+Title.Position = UDim2.new(0, 18, 0, 0)
+Title.BackgroundTransparency = 1
+Title.Text = "XC  <font color='#8c28ff'>V4 CLEAN</font>"
+Title.RichText = true
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 15
+Title.TextColor3 = Color3.fromRGB(240, 240, 245)
+Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.Parent = Header
+
+local Close = Instance.new("TextButton")
+Close.Size = UDim2.new(0, 32, 0, 32)
+Close.Position = UDim2.new(1, -40, 0, 8)
+Close.BackgroundColor3 = Color3.fromRGB(40, 25, 50)
+Close.Text = "×"
+Close.Font = Enum.Font.GothamBold
+Close.TextSize = 18
+Close.TextColor3 = Color3.fromRGB(255, 120, 120)
+Close.Parent = Header
+corner(Close, 6)
+
+-- Sidebar
+local Side = Instance.new("Frame")
+Side.Size = UDim2.new(0, 120, 1, -48)
+Side.Position = UDim2.new(0, 0, 0, 48)
+Side.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+Side.BorderSizePixel = 0
+Side.Parent = Main
+
+local SideList = Instance.new("UIListLayout")
+SideList.Padding = UDim.new(0, 6)
+SideList.HorizontalAlignment = Enum.HorizontalAlignment.Center
+SideList.Parent = Side
+
+local SidePad = Instance.new("UIPadding")
+SidePad.PaddingTop = UDim.new(0, 12)
+SidePad.Parent = Side
+
+-- Content
+local Content = Instance.new("Frame")
+Content.Size = UDim2.new(1, -130, 1, -60)
+Content.Position = UDim2.new(0, 125, 0, 55)
+Content.BackgroundTransparency = 1
+Content.Parent = Main
+
+local Tabs, Panels = {}, {}
+
+local function createTab(name)
+    local panel = Instance.new("ScrollingFrame")
+    panel.Size = UDim2.new(1, 0, 1, 0)
+    panel.BackgroundTransparency = 1
+    panel.Visible = false
+    panel.CanvasSize = UDim2.new(0, 0, 0, 420)
+    panel.ScrollBarThickness = 3
+    panel.ScrollBarImageColor3 = Color3.fromRGB(80, 80, 100)
+    panel.Parent = Content
+
+    local list = Instance.new("UIListLayout")
+    list.Padding = UDim.new(0, 7)
+    list.Parent = panel
+    Panels[name] = panel
+
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(0, 100, 0, 34)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+    btn.Text = name
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(160, 160, 175)
+    btn.Parent = Side
+    corner(btn, 8)
+    local st = stroke(btn, Color3.fromRGB(45, 45, 60))
+
+    btn.MouseButton1Click:Connect(function()
+        for _, p in pairs(Panels) do p.Visible = false end
+        for _, b in pairs(Tabs) do
+            b.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+            b.TextColor3 = Color3.fromRGB(160, 160, 175)
+            b:FindFirstChildOfClass("UIStroke").Color = Color3.fromRGB(45, 45, 60)
+        end
+        panel.Visible = true
+        btn.BackgroundColor3 = XC.Accent
+        btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        st.Color = XC.Accent
+    end)
+
+    Tabs[name] = btn
+end
+
+createTab("Main")
+createTab("Visuals")
+createTab("Settings")
+
+-- Open Main by default
+Panels["Main"].Visible = true
+Tabs["Main"].BackgroundColor3 = XC.Accent
+Tabs["Main"].TextColor3 = Color3.fromRGB(255, 255, 255)
+Tabs["Main"]:FindFirstChildOfClass("UIStroke").Color = XC.Accent
+
+-- UI Helpers
+local function makeToggle(tab, text, key, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.BackgroundColor3 = XC[key] and XC.Accent or Color3.fromRGB(28, 28, 36)
+    btn.Text = text .. (XC[key] and "  •  ON" or "  •  OFF")
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(235, 235, 245)
+    btn.Parent = Panels[tab]
+    corner(btn, 8)
+    local st = stroke(btn, XC[key] and XC.Accent or Color3.fromRGB(45, 45, 60))
+
+    btn.MouseButton1Click:Connect(function()
+        XC[key] = not XC[key]
+        btn.BackgroundColor3 = XC[key] and XC.Accent or Color3.fromRGB(28, 28, 36)
+        st.Color = XC[key] and XC.Accent or Color3.fromRGB(45, 45, 60)
+        btn.Text = text .. (XC[key] and "  •  ON" or "  •  OFF")
+        if callback then callback(XC[key]) end
+    end)
+    return btn
+end
+
+local function makeButton(tab, text, callback)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 0, 38)
+    btn.BackgroundColor3 = Color3.fromRGB(28, 28, 36)
+    btn.Text = text
+    btn.Font = Enum.Font.GothamMedium
+    btn.TextSize = 12
+    btn.TextColor3 = Color3.fromRGB(220, 220, 235)
+    btn.Parent = Panels[tab]
+    corner(btn, 8)
+    stroke(btn, Color3.fromRGB(45, 45, 60))
+    btn.MouseButton1Click:Connect(callback)
+    return btn
+end
+
+-- ========== MAIN TAB ==========
+makeToggle("Main", "Aimbot", "Aimbot")
+makeToggle("Main", "Mouse Aimbot", "MouseAimbot")
+makeToggle("Main", "Mouse Aimbot Hard Lock", "MouseHardLock")
+makeToggle("Main", "Sticky Lock", "StickyLock")
+makeToggle("Main", "Show FOV", "ShowFOV")
+
+local BindBtn = makeButton("Main", "Hotkey: " .. XC.HotkeyText, function()
+    XC.IsBinding = true
+    BindBtn.Text = "Press any key..."
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if XC.IsBinding then
+        XC.IsBinding = false
+        if input.UserInputType == Enum.UserInputType.Keyboard then
+            XC.AimHotkey = input.KeyCode
+            XC.HotkeyText = input.KeyCode.Name
+        else
+            XC.AimHotkey = input.UserInputType
+            XC.HotkeyText = input.UserInputType.Name
+        end
+        BindBtn.Text = "Hotkey: " .. XC.HotkeyText
+    end
+end)
+
+-- ========== VISUALS TAB ==========
+makeToggle("Visuals", "Highlight ESP", "ESP")
+makeToggle("Visuals", "Box ESP", "BoxESP")
+makeToggle("Visuals", "Speed", "Speed", function(state)
+    if not state and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 16 end
+    end
+end)
+
+makeToggle("Visuals", "Wall Delete Mode (Click walls)", "WallDeleteMode")
+
+-- ========== SETTINGS TAB ==========
+local ColorBtn = makeButton("Settings", "Accent Color: " .. ColorNames[ColorIdx], function()
+    ColorIdx = ColorIdx % #Colors + 1
+    XC.Accent = Colors[ColorIdx]
+    ColorBtn.Text = "Accent Color: " .. ColorNames[ColorIdx]
+
+    for name, btn in pairs(Tabs) do
+        if Panels[name].Visible then
+            btn.BackgroundColor3 = XC.Accent
+            btn:FindFirstChildOfClass("UIStroke").Color = XC.Accent
+        end
+    end
+end)
+
+local FOVBtn = makeButton("Settings", "FOV Size: " .. XC.FOVRadius, function()
+    XC.FOVRadius = XC.FOVRadius + 20
+    if XC.FOVRadius > 300 then XC.FOVRadius = 80 end
+    FOVBtn.Text = "FOV Size: " .. XC.FOVRadius
+end)
+
+local SmoothBtn = makeButton("Settings", "Mouse Smooth: " .. string.format("%.2f", XC.MouseSmoothness), function()
+    XC.MouseSmoothness = XC.MouseSmoothness + 0.1
+    if XC.MouseSmoothness > 1 then XC.MouseSmoothness = 0.2 end
+    SmoothBtn.Text = "Mouse Smooth: " .. string.format("%.2f", XC.MouseSmoothness)
+end)
+
+makeButton("Settings", "Save Config", function()
+    local cfg = HttpService:JSONEncode(XC)
+    if writefile then
+        writefile("XC_Config.json", cfg)
+        print("[XC] Config saved!")
+    else
+        print("[XC] Config:\n" .. cfg)
+    end
+end)
+
+makeButton("Settings", "Load Config", function()
+    if isfile and isfile("XC_Config.json") then
+        local data = HttpService:JSONDecode(readfile("XC_Config.json"))
+        for k, v in pairs(data) do
+            if XC[k] ~= nil then XC[k] = v end
+        end
+        print("[XC] Config loaded!")
+    else
+        print("[XC] No config file found")
+    end
+end)
+
+-- Close & Toggle
+Close.MouseButton1Click:Connect(function()
+    Main.Visible = false
+end)
+
+UserInputService.InputBegan:Connect(function(input, gpe)
+    if not gpe and input.KeyCode == Enum.KeyCode.RightControl then
+        Main.Visible = not Main.Visible
+    end
+end)
+
+-- ================= ENGINE =================
+local FOV = Drawing.new("Circle")
+FOV.Thickness = 1
+FOV.NumSides = 64
+FOV.Filled = false
+FOV.Color = XC.Accent
+
+local function getTarget()
+    local closest, shortest = nil, XC.FOVRadius
+    local mousePos = UserInputService:GetMouseLocation()
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("Head") then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local pos, onScreen = Camera:WorldToViewportPoint(plr.Character.Head.Position)
+                if onScreen then
+                    local dist = (Vector2.new(pos.X, pos.Y) - mousePos).Magnitude
+                    if dist < shortest then
+                        shortest = dist
+                        closest = plr
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+local function hotkeyDown()
+    if XC.IsBinding then return false end
+    if typeof(XC.AimHotkey) == "EnumItem" and string.find(tostring(XC.AimHotkey), "KeyCode") then
+        return UserInputService:IsKeyDown(XC.AimHotkey)
+    else
+        return UserInputService:IsMouseButtonPressed(XC.AimHotkey)
+    end
+end
+
+-- ========== FIXED MOUSE AIMBOT ==========
+local function moveMouse(to, hard)
+    local viewport = Camera.ViewportSize
+    local current = UserInputService:GetMouseLocation()
+
+    -- Clamp target so it can never leave the game window
+    local targetX = math.clamp(to.X, 5, viewport.X - 5)
+    local targetY = math.clamp(to.Y, 5, viewport.Y - 5)
+
+    local deltaX = targetX - current.X
+    local deltaY = targetY - current.Y
+
+    local mult = hard and 0.88 or XC.MouseSmoothness
+
+    -- Limit max movement per frame (kills twitching)
+    local maxMove = hard and 42 or 22
+    deltaX = math.clamp(deltaX * mult, -maxMove, maxMove)
+    deltaY = math.clamp(deltaY * mult, -maxMove, maxMove)
+
+    -- Deadzone
+    if math.abs(deltaX) < 1.5 then deltaX = 0 end
+    if math.abs(deltaY) < 1.5 then deltaY = 0 end
+
+    if mousemoverel then
+        mousemoverel(deltaX, deltaY)
+    end
+end
+
+-- Box ESP
+local Boxes = {}
+
+local function clearBoxes()
+    for _, v in pairs(Boxes) do
+        if v.Box then v.Box:Remove() end
+        if v.Name then v.Name:Remove() end
+    end
+    table.clear(Boxes)
+end
+
+local function updateBoxESP()
+    clearBoxes()
+    if not XC.BoxESP then return end
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Head") then
+            local hum = plr.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum.Health > 0 then
+                local root = plr.Character.HumanoidRootPart
+                local pos, onScreen = Camera:WorldToViewportPoint(root.Position)
+                if onScreen then
+                    local size = 40 * (1 / (pos.Z / 20))
+                    size = math.clamp(size, 12, 80)
+
+                    local box = Drawing.new("Square")
+                    box.Visible = true
+                    box.Color = XC.Accent
+                    box.Thickness = 1
+                    box.Filled = false
+                    box.Size = Vector2.new(size * 0.8, size * 1.5)
+                    box.Position = Vector2.new(pos.X - (size * 0.4), pos.Y - (size * 0.9))
+
+                    local name = Drawing.new("Text")
+                    name.Visible = true
+                    name.Text = plr.Name
+                    name.Color = Color3.fromRGB(255, 255, 255)
+                    name.Size = 13
+                    name.Center = true
+                    name.Outline = true
+                    name.Position = Vector2.new(pos.X, pos.Y - (size * 1.05))
+
+                    Boxes[plr] = {Box = box, Name = name}
+                end
+            end
+        end
+    end
+end
+
+-- Wall Delete (click to delete)
+Mouse.Button1Down:Connect(function()
+    if XC.WallDeleteMode and Mouse.Target then
+        local part = Mouse.Target
+        if part:IsA("BasePart") then
+            local model = part:FindFirstAncestorOfClass("Model")
+            if not model or not model:FindFirstChildOfClass("Humanoid") then
+                part:Destroy()
+            end
+        end
+    end
+end)
+
+-- Main Loop
+RunService.RenderStepped:Connect(function()
+    FOV.Position = UserInputService:GetMouseLocation()
+    FOV.Radius = XC.FOVRadius
+    FOV.Color = XC.Accent
+    FOV.Visible = Main.Visible and (XC.Aimbot or XC.MouseAimbot) and XC.ShowFOV
+
+    if (XC.Aimbot or XC.MouseAimbot) and hotkeyDown() then
+        local target = getTarget()
+        if target and target.Character and target.Character:FindFirstChild("Head") then
+            local head = target.Character.Head
+            local screen, onScreen = Camera:WorldToViewportPoint(head.Position)
+
+            if onScreen and screen.Z > 0 then
+                local screenPos = Vector2.new(screen.X, screen.Y)
+
+                if XC.MouseAimbot then
+                    moveMouse(screenPos, XC.MouseHardLock)
+                end
+
+                if XC.Aimbot then
+                    if XC.StickyLock then
+                        Camera.CFrame = CFrame.new(Camera.CFrame.Position, head.Position)
+                    else
+                        Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, head.Position), 0.35)
+                    end
+                end
+            end
+        end
+    end
+
+    if XC.Speed and LocalPlayer.Character then
+        local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then hum.WalkSpeed = 160 end
+    end
+
+    updateBoxESP()
+end)
+
+-- Highlight ESP
+local function setupHighlight(plr)
+    if plr == LocalPlayer then return end
+    local function apply(char)
+        local hl = Instance.new("Highlight")
+        hl.FillTransparency = 0.7
+        hl.OutlineTransparency = 0.2
+        hl.Adornee = char
+        hl.Parent = char
+        RunService.RenderStepped:Connect(function()
+            if not char.Parent or not hl then return end
+            hl.Enabled = XC.ESP
+            hl.FillColor = XC.Accent
+            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+        end)
+    end
+    plr.CharacterAdded:Connect(apply)
+    if plr.Character then apply(plr.Character) end
+end
+
+for _, p in ipairs(Players:GetPlayers()) do setupHighlight(p) end
+Players.PlayerAdded:Connect(setupHighlight)
+
+print("[XC V4] Loaded | RightControl to toggle menu")
